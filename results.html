@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="UTF-8">
+<title>نتایج پرسشنامه</title>
+<style>
+  body {
+    font-family: sans-serif;
+    direction: rtl;
+    text-align: right;
+    padding: 20px;
+    background: #f7f7f7;
+  }
+  h2 {
+    color: #333;
+  }
+  #btn {
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    margin: 10px 0;
+  }
+  .result-block {
+    background: #fff;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 15px;
+    box-shadow: 0 0 5px rgba(0,0,0,0.1);
+  }
+  .label {
+    font-weight: bold;
+  }
+  .green { color: green; font-weight: bold; }
+  .yellow { color: orange; font-weight: bold; }
+  .red { color: red; font-weight: bold; }
+  .error {
+    color: red;
+    font-weight: bold;
+    margin-top: 10px;
+  }
+</style>
+</head>
+
+<body>
+
+<h2>نتایج پرسشنامه</h2>
+<p>برای دریافت و نمایش آخرین نتایج ثبت‌شده، روی دکمه زیر کلیک کنید.</p>
+
+<button id="btn" onclick="fetchResults()">دریافت و نمایش نتایج</button>
+
+<div id="output"></div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbx43b_AF6RmJT7x4CbjvFAqoPSNwCnqI-ktb8kuM6PyniKIkdPzCjCSljxXouKFmA2H/exec";
+
+function colorize(score, low, mid) {
+  if (score <= low) return "<span class='green'>سبز</span>";
+  if (score <= mid) return "<span class='yellow'>زرد</span>";
+  return "<span class='red'>قرمز</span>";
+}
+
+function safeNumber(value) {
+  const n = Number(value);
+  if (isNaN(n)) return null;
+  return n;
+}
+
+async function fetchResults() {
+  const out = document.getElementById("output");
+  out.innerHTML = "<p>در حال دریافت داده‌ها...</p>";
+
+  try {
+    const res = await fetch(API_URL);
+    if (!res.ok) {
+      out.innerHTML = "<p class='error'>خطا در ارتباط با سرور. لطفاً بعداً دوباره تلاش کنید.</p>";
+      return;
+    }
+
+    const data = await res.json();
+
+    // انتظار داریم فیلدها: PNI, IUS, BFNE, PFAI, DSHI
+    const PNI  = safeNumber(data.PNI);
+    const IUS  = safeNumber(data.IUS);
+    const BFNE = safeNumber(data.BFNE);
+    const PFAI = safeNumber(data.PFAI);
+    const DSHI = safeNumber(data.DSHI);
+
+    if (PNI === null || IUS === null || BFNE === null || PFAI === null || DSHI === null) {
+      out.innerHTML = "<p class='error'>داده‌های نمره ناقص یا نامعتبر هستند. لطفاً تنظیمات شیت را بررسی کنید.</p>";
+      return;
+    }
+
+    let html = "<div class='result-block'>";
+    html += "<h3>نتایج آخرین پاسخ ثبت‌شده</h3>";
+
+    html += "<p><span class='label'>PNI:</span> " + PNI + " — " + colorize(PNI, 60, 90) + "</p>";
+    html += "<p><span class='label'>IUS:</span> " + IUS + " — " + colorize(IUS, 20, 35) + "</p>";
+    html += "<p><span class='label'>BFNE:</span> " + BFNE + " — " + colorize(BFNE, 15, 25) + "</p>";
+    html += "<p><span class='label'>PFAI:</span> " + PFAI + " — " + colorize(PFAI, 40, 60) + "</p>";
+
+    if (DSHI === 0) {
+      html += "<p><span class='label'>DSHI:</span> " + DSHI + " — <span class='green'>سبز: بدون رفتار آسیب‌رسان</span></p>";
+    } else if (DSHI <= 3) {
+      html += "<p><span class='label'>DSHI:</span> " + DSHI + " — <span class='yellow'>زرد: رفتار آسیب‌رسان خفیف</span></p>";
+    } else {
+      html += "<p><span class='label'>DSHI:</span> " + DSHI + " — <span class='red'>قرمز: رفتار آسیب‌رسان متوسط/بالا</span></p>";
+    }
+
+    html += "<p>از مشارکت شما در این پژوهش سپاسگزاریم.</p>";
+    html += "</div>";
+
+    out.innerHTML = html;
+
+  } catch (e) {
+    console.error(e);
+    out.innerHTML = "<p class='error'>خطای غیرمنتظره رخ داد. لطفاً اتصال اینترنت یا تنظیمات را بررسی کنید.</p>";
+  }
+}
+</script>
+
+</body>
+</html>
