@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>نتایج پرسشنامه</title>
+
 <style>
   body {
     font-family: sans-serif;
@@ -11,9 +12,7 @@
     padding: 20px;
     background: #f7f7f7;
   }
-  h2 {
-    color: #333;
-  }
+  h2 { color: #333; }
   #btn {
     padding: 10px 20px;
     font-size: 16px;
@@ -27,9 +26,7 @@
     margin-top: 15px;
     box-shadow: 0 0 5px rgba(0,0,0,0.1);
   }
-  .label {
-    font-weight: bold;
-  }
+  .label { font-weight: bold; }
   .green { color: green; font-weight: bold; }
   .yellow { color: orange; font-weight: bold; }
   .red { color: red; font-weight: bold; }
@@ -51,18 +48,22 @@
 <div id="output"></div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbwNcDK0eJ0K7J8i4ydQWx1MiDt3ItYqixHWliyMbloUiXCkfDpTnieOzm1ivSOVLrpF/exec";
 
+// 🔥 لینک Web App جدید تو
+const API_URL = "https://script.google.com/macros/s/AKfycbxweJl2eSQY0k5trf5hFmFWW1x_zDBCbzUA8a1i7d0KtBOfF_XYjVkmvE2YoRhGahJb/exec";
+
+// 🔥 تبدیل بله/خیر برای DSHI
+function convertDSHI(v) {
+  if (v === "بله") return 1;
+  if (v === "خیر") return 0;
+  return 0;
+}
+
+// 🔥 رنگ‌بندی
 function colorize(score, low, mid) {
   if (score <= low) return "<span class='green'>سبز</span>";
   if (score <= mid) return "<span class='yellow'>زرد</span>";
   return "<span class='red'>قرمز</span>";
-}
-
-function safeNumber(value) {
-  const n = Number(value);
-  if (isNaN(n)) return null;
-  return n;
 }
 
 async function fetchResults() {
@@ -72,50 +73,77 @@ async function fetchResults() {
   try {
     const res = await fetch(API_URL);
     if (!res.ok) {
-      out.innerHTML = "<p class='error'>خطا در ارتباط با سرور. لطفاً بعداً دوباره تلاش کنید.</p>";
+      out.innerHTML = "<p class='error'>خطا در ارتباط با سرور.</p>";
       return;
     }
 
     const data = await res.json();
 
-    // انتظار داریم فیلدها: PNI, IUS, BFNE, PFAI, DSHI
-    const PNI  = safeNumber(data.PNI);
-    const IUS  = safeNumber(data.IUS);
-    const BFNE = safeNumber(data.BFNE);
-    const PFAI = safeNumber(data.PFAI);
-    const DSHI = safeNumber(data.DSHI);
+    // 🔥 داده‌ها یک آرایه هستند (۹۳ ستون)
+    // ستون شروع پرسشنامه‌ها = 29
+    const start = 29;
 
-    if (PNI === null || IUS === null || BFNE === null || PFAI === null || DSHI === null) {
-      out.innerHTML = "<p class='error'>داده‌های نمره ناقص یا نامعتبر هستند. لطفاً تنظیمات شیت را بررسی کنید.</p>";
-      return;
+    // 🔥 محاسبه PNI (۲۸ سؤال)
+    let PNI = 0;
+    for (let i = start; i < start + 28; i++) {
+      PNI += Number(data[i]);
     }
 
+    // 🔥 BFNE (۱۲ سؤال)
+    let BFNE = 0;
+    let bfneStart = start + 28;
+    for (let i = bfneStart; i < bfneStart + 12; i++) {
+      BFNE += Number(data[i]);
+    }
+
+    // 🔥 IUS (۱۲ سؤال)
+    let IUS = 0;
+    let iusStart = bfneStart + 12;
+    for (let i = iusStart; i < iusStart + 12; i++) {
+      IUS += Number(data[i]);
+    }
+
+    // 🔥 PFAI (۲۵ سؤال)
+    let PFAI = 0;
+    let pfaiStart = iusStart + 12;
+    for (let i = pfaiStart; i < pfaiStart + 25; i++) {
+      PFAI += Number(data[i]);
+    }
+
+    // 🔥 DSHI (۱۷ سؤال بله/خیر)
+    let DSHI = 0;
+    let dshiStart = pfaiStart + 25;
+    for (let i = dshiStart; i < dshiStart + 17; i++) {
+      DSHI += convertDSHI(data[i]);
+    }
+
+    // 🔥 نمایش نتایج
     let html = "<div class='result-block'>";
     html += "<h3>نتایج آخرین پاسخ ثبت‌شده</h3>";
 
     html += "<p><span class='label'>PNI:</span> " + PNI + " — " + colorize(PNI, 60, 90) + "</p>";
-    html += "<p><span class='label'>IUS:</span> " + IUS + " — " + colorize(IUS, 20, 35) + "</p>";
     html += "<p><span class='label'>BFNE:</span> " + BFNE + " — " + colorize(BFNE, 15, 25) + "</p>";
+    html += "<p><span class='label'>IUS:</span> " + IUS + " — " + colorize(IUS, 20, 35) + "</p>";
     html += "<p><span class='label'>PFAI:</span> " + PFAI + " — " + colorize(PFAI, 40, 60) + "</p>";
 
     if (DSHI === 0) {
-      html += "<p><span class='label'>DSHI:</span> " + DSHI + " — <span class='green'>سبز: بدون رفتار آسیب‌رسان</span></p>";
+      html += "<p><span class='label'>DSHI:</span> " + DSHI + " — <span class='green'>بدون رفتار آسیب‌رسان</span></p>";
     } else if (DSHI <= 3) {
-      html += "<p><span class='label'>DSHI:</span> " + DSHI + " — <span class='yellow'>زرد: رفتار آسیب‌رسان خفیف</span></p>";
+      html += "<p><span class='label'>DSHI:</span> " + DSHI + " — <span class='yellow'>رفتار آسیب‌رسان خفیف</span></p>";
     } else {
-      html += "<p><span class='label'>DSHI:</span> " + DSHI + " — <span class='red'>قرمز: رفتار آسیب‌رسان متوسط/بالا</span></p>";
+      html += "<p><span class='label'>DSHI:</span> " + DSHI + " — <span class='red'>رفتار آسیب‌رسان متوسط/بالا</span></p>";
     }
 
-    html += "<p>از مشارکت شما در این پژوهش سپاسگزاریم.</p>";
+    html += "<p>از مشارکت شما سپاسگزاریم.</p>";
     html += "</div>";
 
     out.innerHTML = html;
 
   } catch (e) {
-    console.error(e);
-    out.innerHTML = "<p class='error'>خطای غیرمنتظره رخ داد. لطفاً اتصال اینترنت یا تنظیمات را بررسی کنید.</p>";
+    out.innerHTML = "<p class='error'>خطای غیرمنتظره رخ داد.</p>";
   }
 }
+
 </script>
 
 </body>
